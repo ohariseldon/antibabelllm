@@ -60,8 +60,12 @@ Ou seja, uns 18 pontos eram assunto e época; o resto é sinal.
 | `--notas prosa` | 57% | 100% | 100% |
 | `--notas fatos` (v0.8) | 76% | 99% | 99% |
 | `--notas fatos` (fatos2) | 73% | 100% | 100% |
+| v0.9 `--exemplos` (frases humanas da Folha como modelo), só Haiku | 59% | 99% | 99% |
+| v0.9 `--exemplos`, Haiku e Sonnet sorteados por trecho | 87,5% | 100% | 100% |
 
 No fatos2, só o estilo pega 22% sem ter visto o babelllm e 89% depois de ver as versões antigas. Só o vetor de sentido pega 71% e 99%. As versões novas são pegas por um detector que só conhecia as antigas, então a família inteira deixa uma assinatura no espaço de sentido.
+
+Na v0.9 os exemplos humanos derrubaram o estilo: sem ter visto o babelllm, ele passou a pegar só 7,5%. O vetor de sentido continuou pegando 57,5%. Misturar o Sonnet piorou o ataque, porque o Sonnet se parece mais com os textos do Claude que o detector já conhece.
 
 O Binoculars com o par pequeno Qwen2.5 (0,5B e 1,5B) não separa os artigos do wasemu das colunas de economia da Folha. Pior: as saídas do babelllm parecem *mais* humanas para ele.
 

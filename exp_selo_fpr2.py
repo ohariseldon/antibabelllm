@@ -44,12 +44,16 @@ def main():
     base = Selo("chave-de-teste-luiz", branqueador=None)
     W = np.load(BRANQUEADOR_PADRAO)
     res = {}
-    for nome, w, cal in (("cru", None, False), ("branqueado", W, False), ("branq+calib", W, True)):
+    import sys
+    configs = [("cru", None, False), ("branqueado", W, False), ("branq+calib", W, True), ("só calib", None, True)]
+    if len(sys.argv) > 1:
+        configs = [c for c in configs if c[0] in sys.argv[1:]]
+    for nome, w, cal in configs:
         s = Selo("chave-de-teste-luiz", modelo=base.modelo, branqueador=w)
         s._cache = base._cache
         if cal:
             s.calibrar(ref)
-            s.salvar_calibracao(resultado("calib_chave_teste.npz"))
+            s.salvar_calibracao(resultado("calib_chave_teste.npz" if w is not None else "calib_chave_teste_sem_branq.npz"))
         for lg, docs in teste.items():
             f1, f5 = fpr_por_chave(zmax_docs(s, docs))
             res[f"{nome}|{lg}"] = dict(media1=float(f1.mean()), media5=float(f5.mean()),
@@ -62,7 +66,7 @@ def main():
             print(f"{nome:12s} {lg} falso+ a 1%: média {r['media1']:.3f}, p90 {r['p90_1']:.3f}, p99 {r['p99_1']:.3f},"
                   f" chaves>2% {r['chaves_acima_2pct']:.2f} | a 5%: média {r['media5']:.3f}, p90 {r['p90_5']:.3f},"
                   f" p99 {r['p99_5']:.3f} | chave luiz {r['chave_luiz']}", flush=True)
-    json.dump(res, open(resultado("exp_selo_fpr2.json"), "w"), indent=1)
+    json.dump(res, open(resultado("exp_selo_fpr2" + ("_" + "_".join(sys.argv[1:]).replace(" ", "") if len(sys.argv) > 1 else "") + ".json"), "w"), indent=1)
 
 
 if __name__ == "__main__":
