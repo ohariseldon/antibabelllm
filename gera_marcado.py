@@ -79,10 +79,14 @@ class Gerador:
         return self.tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True) + prefixo
 
     @torch.inference_mode()
-    def continuacoes(self, pedido: str, prefixo: str, n: int, max_novos=56, temp=0.9) -> list[str]:
+    def continuacoes(self, pedido: str, prefixo: str, n: int, max_novos=56, temp=0.9, sem_fim=False) -> list[str]:
         ids = self.tok(self._prompt(pedido, prefixo), return_tensors="pt")
+        extra = {}
+        if sem_fim:  # o texto ainda está curto: não deixa o modelo encerrar
+            fins = {self.tok.eos_token_id, self.tok.convert_tokens_to_ids("<|endoftext|>")}
+            extra["suppress_tokens"] = [t for t in fins if t is not None and t >= 0]
         out = self.m.generate(**ids, do_sample=True, temperature=temp, top_p=0.95, max_new_tokens=max_novos,
-                              num_return_sequences=n, pad_token_id=self.tok.eos_token_id)
+                              num_return_sequences=n, pad_token_id=self.tok.eos_token_id, **extra)
         txts = self.tok.batch_decode(out[:, ids["input_ids"].shape[1]:], skip_special_tokens=True)
         res = []
         for t in txts:
@@ -105,14 +109,19 @@ class Gerador:
         return [t.strip() for t in self.tok.batch_decode(out[:, ids["input_ids"].shape[1]:], skip_special_tokens=True)]
 
 
-def gerar(g: Gerador, selo: Selo | None, lingua: str, tema: str, n: int, k: int = 18, rng=None) -> list[str]:
+def gerar(g: Gerador, selo: Selo | None, lingua: str, tema: str, n: int, k: int = 18, rng=None,
+          minimo: int = 0, registro: list | None = None) -> list[str]:
+    """registro, se dado, recebe as candidatas de cada passo e a escolhida (para análise)."""
     pedido = PEDIDO[lingua].format(k=k, tema=tema)
     v_tema = selo.vetores([tema])[0] if selo else None
     texto: list[str] = []
     while len(texto) < k + 4:
         prefixo = " ".join(texto) + (" " if texto else "")
-        cands = g.continuacoes(pedido, prefixo, n if selo else 1)
-        cands = [c for c in cands if len(c.split()) >= 4 and c not in texto]
+        for _tentativa in range(3):  # frase cortada ou vazia: tenta de novo antes de desistir
+            cands = g.continuacoes(pedido, prefixo, n if selo else 1, sem_fim=len(texto) < minimo)
+            cands = [c for c in cands if len(c.split()) >= 4 and c not in texto]
+            if cands or len(texto) >= minimo:
+                break
         if not cands:
             break
         if selo is None:
@@ -124,6 +133,8 @@ def gerar(g: Gerador, selo: Selo | None, lingua: str, tema: str, n: int, k: int 
         media = (ja.sum(0) + 2 * v_tema + V.mean(0)) / (len(ja) + 3)
         q = selo.nota(selo.residuos(V, media))
         texto.append(cands[int(np.argmax(q))])
+        if registro is not None:
+            registro.append({"candidatas": cands, "escolhida": int(np.argmax(q))})
     return texto
 
 
@@ -140,6 +151,7 @@ def main():
     ap.add_argument("--n", type=int, default=8)
     ap.add_argument("--chave", default="chave-de-teste-luiz")
     ap.add_argument("--threads", type=int, default=2)
+    ap.add_argument("--minimo", type=int, default=0, help="frases mínimas antes de deixar o modelo encerrar")
     ap.add_argument("--saida", default=resultado("gera_marcado.json"))
     a = ap.parse_args()
     selo = Selo(a.chave)
@@ -151,9 +163,10 @@ def main():
         if tema in feitos:
             continue
         t0 = time.time()
-        marcado = gerar(g, selo, lingua, tema, a.n, rng=rng)
-        controle = gerar(g, None, lingua, tema, a.n, rng=rng)
-        r = {"lingua": lingua, "marcado": marcado, "controle": controle,
+        passos: list = []
+        marcado = gerar(g, selo, lingua, tema, a.n, rng=rng, minimo=a.minimo, registro=passos)
+        controle = gerar(g, None, lingua, tema, a.n, rng=rng, minimo=a.minimo)
+        r = {"lingua": lingua, "marcado": marcado, "controle": controle, "passos": passos,
              "marcado_parafrase": parafrasear(g, marcado, lingua),
              "controle_parafrase": parafrasear(g, controle, lingua)}
         r["det"] = {k: vars(selo.detectar(" ".join(r[k]))) for k in

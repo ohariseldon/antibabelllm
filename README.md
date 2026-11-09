@@ -92,7 +92,18 @@ Sem correção, algumas chaves acusavam quase três vezes o nominal. Com branque
 ### Selo: força da marca
 
 - **Escolha entre reescritas prontas do Haiku** (`exp_selo_pool.py`, cerca de 3,6 versões por frase, 20 artigos). O z médio do texto marcado foi 2,35, contra 0,86 no controle. Ele continuou entre 2,2 e 2,5 depois de embaralhar, fundir 70% das frases, dividir nas vírgulas e cortar 30% das frases. A escolha aqui é só entre palavras, então a força é pequena, e uma paráfrase nova tende a apagá-la.
-- **Marca na hora de gerar** (`gera_marcado.py`, Qwen2.5-1.5B local, 8 continuações por frase). As continuações dizem coisas diferentes, então a marca fica no conteúdo. Num texto de 22 frases, o marcado teve z = 4,9 (p = 0,001), o controle −0,3 e o marcado depois de parafraseado 3,6 (p = 0,002). A rodada com 20 temas ainda está em andamento.
+- **Escolha entre reescritas do Haiku, com branqueamento e calibração.** O z médio foi 2,36 no marcado e 0,45 no controle. No controle, nenhum texto foi acusado a 1%, e só 5% a 5%.
+- **Marca na hora de gerar** (`gera_marcado.py` e `analisa_gera.py`). O modelo é o Qwen2.5-1.5B local, sem GPU, com 8 continuações por frase. Como as continuações dizem coisas diferentes, a marca fica no conteúdo. Os 10 primeiros temas, com cerca de 15 frases por texto, deram:
+
+| texto | z médio | detectado a 1% | detectado a 5% |
+|---|---|---|---|
+| marcado | 3,0 | 70% | 80% |
+| controle | 0,7 | 0% | 10% |
+| marcado depois de paráfrase | 1,9 | 20% | 60% |
+| controle depois de paráfrase | 0,6 | 10% | 10% |
+
+  A paráfrase é feita pelo mesmo modelo, em trechos de 3 frases. Ela tira cerca de um terço da força, mas não apaga a marca. A força cresce com o comprimento: textos de 22 frases chegaram a z de 4,2 a 5,7 antes da paráfrase. A rodada com textos mais longos (`--minimo 16`) e os temas em inglês continua.
+- **Qual modelo de vetor usar.** Medi quanto da nota vem do conteúdo e não das palavras (`exp_embedder.py`). Deu 0,635 com o MiniLM e 0,650 com o mpnet. A diferença é pequena e não compensa o mpnet ser duas vezes mais lento.
 
 ## Como rodar
 
