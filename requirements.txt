@@ -1,0 +1,8 @@
+numpy>=2.0
+scikit-learn>=1.5
+sentence-transformers>=3.0
+torch>=2.3
+transformers>=4.45
+# só para montar a régua do detector sem chave
+pandas>=2.2
+pyarrow>=15
