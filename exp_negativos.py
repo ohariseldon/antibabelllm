@@ -49,7 +49,10 @@ def janelas_agencia():
 
 
 def features_agencia(linhas, blocos):
-    cache = f"{BASE}.agencia.npz"
+    return features(linhas, blocos, f"{BASE}.agencia.npz")
+
+
+def features(linhas, blocos, cache):
     try:
         z = np.load(cache)
         if len(z["estilo"]) == len(linhas):
@@ -83,6 +86,9 @@ def main():
 
     ag = janelas_agencia()
     Xa = features_agencia(ag, blocos)
+    oka = ~np.isnan(Xa).any(1)
+    ag = [l for l, k in zip(ag, oka) if k]
+    Xa = Xa[oka]
     lado_a = np.array(["treino" if _u(l["familia"]) < 0.4 else ("calib" if _u(l["familia"]) < 0.55 else "teste")
                        for l in ag])
     print(f"Agência Brasil: {len(ag)} janelas (treino {np.sum(lado_a == 'treino')}, calib "
@@ -99,7 +105,8 @@ def main():
             Xtr = np.concatenate([Xtr, Xa[lado_a == "treino"]])
             ytr = np.concatenate([ytr, np.zeros(np.sum(lado_a == "treino"), int)])
         clf = _clf(modelo).fit(Xtr, ytr)
-        s = _score(clf, X, modelo)
+        s = np.full(len(X), np.nan)
+        s[ok] = _score(clf, X[ok], modelo)
         sa = _score(clf, Xa, modelo)
         hc = s[ok & (split == "calib") & (y == 0)]
         if com_agencia:

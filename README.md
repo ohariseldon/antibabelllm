@@ -45,7 +45,23 @@ r = s.detectar(texto)   # r.z, r.p, r.marcado (p ≤ 0,01)
 
 Os artigos do wasemu sem reescrita são pegos em 100% dos casos. O falso positivo real nos humanos de teste ficou entre 1,7% e 2,4%, para um nominal de 1%.
 
-**Cuidado:** humanos e IA aqui diferem também em época e assunto. O `exp_negativos.py` refaz a conta com notícias humanas de economia de 2025-2026 da Agência Brasil (licença CC BY), sobre os mesmos temas.
+**Controle de assunto e época** (`exp_negativos.py`). Humanos e IA da tabela acima diferem também em época e assunto. Por isso a conta foi refeita com 506 notícias humanas de economia da Agência Brasil, de 2025-2026 e sobre os mesmos temas (licença CC BY).
+
+- O detector da tabela acusava 12% delas.
+- Com metade delas no treino como humano, o falso positivo volta a 1,5%. O detector que nunca viu babelllm cai de 91% para 73%; no modo prosa, de 87% para 57%.
+- Com treino adversário, continua em 99%.
+
+Ou seja, uns 18 pontos eram assunto e época; o resto é sinal.
+
+**Ataque contra defesa** (`exp_ataque_novo.py <pasta> <nome>`). A thread do babelllm manda cada versão nova do ataque, e ela é medida aqui. Todos os números abaixo têm controle de assunto.
+
+| versão do babelllm | nunca viu babelllm | viu as versões antigas | retreinado com esta |
+|---|---|---|---|
+| `--notas prosa` | 57% | 100% | 100% |
+| `--notas fatos` (v0.8) | 76% | 99% | 99% |
+| `--notas fatos` (fatos2) | 73% | 100% | 100% |
+
+No fatos2, só o estilo pega 22% sem ter visto o babelllm e 89% depois de ver as versões antigas. Só o vetor de sentido pega 71% e 99%. As versões novas são pegas por um detector que só conhecia as antigas, então a família inteira deixa uma assinatura no espaço de sentido.
 
 O Binoculars com o par pequeno Qwen2.5 (0,5B e 1,5B) não separa os artigos do wasemu das colunas de economia da Folha. Pior: as saídas do babelllm parecem *mais* humanas para ele.
 
